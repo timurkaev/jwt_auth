@@ -14,7 +14,7 @@ func LoadConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Println("Нет .env файла, используются перменные окружения")
+		log.Println("Нет .env файла, используются перeменные окружения")
 	}
 
 	JwtSecret = viper.GetString("JWT_SECRET")

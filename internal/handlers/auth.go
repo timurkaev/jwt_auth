@@ -1,27 +1,53 @@
 package handlers
 
 import (
-	"jwt-auth/internal/models"
 	"jwt-auth/internal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func LoginHandler(c *gin.Context) {
-	var creds models.User
-	if err := c.ShouldBindJSON(&creds); err != nil {
+func RegisterHandler(c *gin.Context) {
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
 		return
 	}
 
-	password, exists := models.Users[creds.Username]
-	if !exists || password != creds.Password {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Неверный логин или пароль"})
+	err := services.RegisterUser(req.Username, req.Password)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
 
-	token, err := services.GenerateToken(creds.Username)
+	c.JSON(http.StatusCreated, gin.H{"message": "Регистрация успешна!"})
+}
+
+func LoginHandler(c *gin.Context) {
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	// Читаем JSON из запроса
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		return
+	}
+
+	// Проверяем логин и пароль
+	user, err := services.AuthenticateUser(req.Username, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Генерируем токен
+	token, err := services.GenerateToken(user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка генерации токена"})
 		return
@@ -31,6 +57,10 @@ func LoginHandler(c *gin.Context) {
 }
 
 func ProtectedHandler(c *gin.Context) {
-	username, _ := c.Get("username")
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Не авторизован"})
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Доступ разрешен", "user": username})
 }

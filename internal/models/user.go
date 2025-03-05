@@ -7,8 +7,8 @@ import (
 
 type User struct {
 	gorm.Model
-	Username string `gorm:"unique;not null" json:"username"`
-	Password string `json:"-"`
+	Username string `gorm:"unique;not null"`
+	Password string `gorm:"not null"`
 }
 
 // Hashing the password before saving

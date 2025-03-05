@@ -2,7 +2,10 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"jwt-auth/config"
+	"jwt-auth/internal/database"
+	"jwt-auth/internal/models"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -44,4 +47,45 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+// Регистрация нового пользователя
+func RegisterUser(username, password string) error {
+	var existingUser models.User
+	result := database.DB.Where("username = ?", username).First(&existingUser)
+
+	// Если пользователь уже существует — ошибка
+	if result.RowsAffected > 0 {
+		return errors.New("пользователь уже существует")
+	}
+
+	// Создаём нового пользователя
+	newUser := models.User{Username: username, Password: password}
+	if err := newUser.HashPassword(); err != nil {
+		return err
+	}
+
+	// Сохраняем пользователя в PostgreSQL
+	if err := database.DB.Create(&newUser).Error; err != nil {
+		fmt.Println("❌ Ошибка сохранения в базу:", err)
+		return err
+	}
+
+	fmt.Println("✅ Пользователь успешно сохранён в базе:", newUser.Username)
+	return nil
+}
+
+func AuthenticateUser(username, password string) (*models.User, error) {
+	var user models.User
+	result := database.DB.Where("username = ?", username).First(&user)
+
+	if result.RowsAffected == 0 {
+		return nil, errors.New("пользователь не найден")
+	}
+
+	if !user.CheckPassword(password) {
+		return nil, errors.New("неверный пароль")
+	}
+
+	return &user, nil
 }
