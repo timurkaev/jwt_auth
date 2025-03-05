@@ -1,11 +1,28 @@
 package models
 
+import (
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
 type User struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	gorm.Model
+	Username string `gorm:"unique;not null" json:"username"`
+	Password string `json:"-"`
 }
 
-var Users = map[string]string{
-	"user1": "password1",
-	"user2": "password2",
+// Hashing the password before saving
+func (u *User) HashPassword() error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	u.Password = string(hashedPassword)
+	return nil
+}
+
+// Check password
+func (u *User) CheckPassword(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	return err == nil
 }
