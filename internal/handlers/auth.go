@@ -9,16 +9,17 @@ import (
 
 func RegisterHandler(c *gin.Context) {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Username string `json:"username" binding:"required"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=6"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса: " + err.Error()})
 		return
 	}
 
-	err := services.RegisterUser(req.Username, req.Password)
+	err := services.RegisterUser(req.Username, req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
@@ -29,8 +30,8 @@ func RegisterHandler(c *gin.Context) {
 
 func LoginHandler(c *gin.Context) {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
 	}
 
 	// Читаем JSON из запроса
@@ -39,15 +40,15 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	// Проверяем логин и пароль
-	user, err := services.AuthenticateUser(req.Username, req.Password)
+	// Проверяем email и пароль
+	user, err := services.AuthenticateUser(req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Генерируем токен
-	token, err := services.GenerateToken(user.Username)
+	token, err := services.GenerateToken(user.Username, user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка генерации токена"})
 		return

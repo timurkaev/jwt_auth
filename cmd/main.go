@@ -7,6 +7,7 @@ import (
 	"jwt-auth/internal/handlers"
 	"jwt-auth/internal/middleware"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,6 +16,9 @@ func main() {
 	database.InitDB()
 
 	r := gin.Default()
+
+	// Add CORS middleware
+	r.Use(cors.Default())
 
 	r.POST("/register", handlers.RegisterHandler)
 	r.POST("/login", handlers.LoginHandler)

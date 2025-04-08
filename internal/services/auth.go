@@ -13,14 +13,16 @@ import (
 
 type Claims struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	jwt.RegisteredClaims
 }
 
 // JWT-token generator
-func GenerateToken(username string) (string, error) {
+func GenerateToken(username, email string) (string, error) {
 	expirationTime := time.Now().Add(1 * time.Hour)
 	claims := &Claims{
 		Username: username,
+		Email:    email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -50,17 +52,24 @@ func ValidateToken(tokenString string) (*Claims, error) {
 }
 
 // Регистрация нового пользователя
-func RegisterUser(username, password string) error {
+func RegisterUser(username, email, password string) error {
 	var existingUser models.User
-	result := database.DB.Where("username = ?", username).First(&existingUser)
+	result := database.DB.Where("username = ? OR email = ?", username, email).First(&existingUser)
 
 	// Если пользователь уже существует — ошибка
 	if result.RowsAffected > 0 {
-		return errors.New("пользователь уже существует")
+		if existingUser.Username == username {
+			return errors.New("пользователь с таким именем уже существует")
+		}
+		return errors.New("пользователь с таким email уже существует")
 	}
 
 	// Создаём нового пользователя
-	newUser := models.User{Username: username, Password: password}
+	newUser := models.User{
+		Username: username,
+		Email:    email,
+		Password: password,
+	}
 	if err := newUser.HashPassword(); err != nil {
 		return err
 	}
@@ -75,9 +84,9 @@ func RegisterUser(username, password string) error {
 	return nil
 }
 
-func AuthenticateUser(username, password string) (*models.User, error) {
+func AuthenticateUser(email, password string) (*models.User, error) {
 	var user models.User
-	result := database.DB.Where("username = ?", username).First(&user)
+	result := database.DB.Where("email = ?", email).First(&user)
 
 	if result.RowsAffected == 0 {
 		return nil, errors.New("пользователь не найден")

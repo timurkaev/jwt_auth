@@ -33,6 +33,13 @@ func InitDB() {
 
 	fmt.Println("✅ Подключение к PostgreSQL успешно!")
 
+	// Drop the table if it exists
+	err = DB.Migrator().DropTable(&models.User{})
+	if err != nil {
+		log.Fatal("❌ Ошибка удаления таблицы:", err)
+	}
+
+	// Create the table with new schema
 	err = DB.AutoMigrate(&models.User{})
 	if err != nil {
 		log.Fatal("❌ Ошибка миграции:", err)
